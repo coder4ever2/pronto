@@ -1,0 +1,13 @@
+package omniapi
+
+import java.util.Date;
+
+class ContactPhoneNumber {
+	
+	PhoneContact phoneContact
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+    static constraints = {
+		phoneContact nullable:true
+    }
+}

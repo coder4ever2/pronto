@@ -1,0 +1,287 @@
+package omniapi
+
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+import grails.transaction.Transactional
+
+import java.security.InvalidKeyException
+import java.security.KeyStore
+import java.security.KeyStoreException
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException
+import java.security.Signature
+import java.security.SignatureException
+import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
+
+import javax.net.ssl.TrustManager
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
+
+import org.apache.commons.codec.binary.Base64
+import org.apache.commons.codec.digest.DigestUtils;
+
+@Transactional
+class AlexaUtilService {
+
+		static def Map<String, X509Certificate> CERTIFICATE_CACHE = new ConcurrentHashMap();
+	    static def DOMAIN_NAME_SUBJECT_ALTERNATIVE_NAME_ENTRY = 2;
+	    static def String VALID_SIGNING_CERT_CHAIN_PROTOCOL = "https";
+	    static def String VALID_SIGNING_CERT_CHAIN_URL_HOST_NAME = "s3.amazonaws.com";
+	    static def String VALID_SIGNING_CERT_CHAING_URL_PATH_PREFIX = "/echo.api/";
+	    static def UNSPECIFIED_SIGNING_CERT_CHAIN_URL_PORT_VALUE = -1;
+
+		private String toHex(byte[] bytes) {
+				BigInteger bi = new BigInteger(1, bytes);
+				return String.format("%0" + (bytes.length << 1) + "X", bi);
+		}
+		
+		public String sha256Digest (byte[] data) throws SignatureException {
+			return getDigest("SHA-256", data, false);
+		}
+		   
+		private String getDigest(String algorithm, byte[] data, boolean toLower)
+			throws SignatureException {
+			 try {
+				MessageDigest mac = MessageDigest.getInstance(algorithm);
+				mac.update(data);
+				return toLower ?
+				 new String(toHex(mac.digest())).toLowerCase() : new String(toHex(mac.digest()));
+			 } catch (Exception e) {
+			 	throw new SignatureException(e);
+			 }
+		   }
+	    /**
+	     * Verifies the certificate authenticity using the configured TrustStore and the signature of
+	     * the speechlet request.
+	     *
+	     * @param serializedSpeechletRequest
+	     *            speechlet request serialized as a string of JSON
+	     * @param baseEncoded64Signature
+	     *            the signature for provided in the request header
+	     * @param signingCertificateChainUrl
+	     *            the certificate chain URL provided in the request header
+	     */
+	    def checkRequestSignature(final byte[] serializedSpeechletRequest,
+	            final String baseEncoded64Signature, final String signingCertificateChainUrl) {
+	        if ((baseEncoded64Signature == null) || (signingCertificateChainUrl == null)) {
+	            throw new SecurityException(
+	                    "Missing signature/certificate for the provided speechlet request");
+	        }
+			
+	        try {
+	            X509Certificate signingCertificate;
+	            if (CERTIFICATE_CACHE.containsKey(signingCertificateChainUrl)) {
+	                signingCertificate = CERTIFICATE_CACHE.get(signingCertificateChainUrl);
+	                /*
+	                 * check the before/after dates on the certificate are still valid for the present
+	                 * time
+	                 */
+	                signingCertificate.checkValidity();
+	            } else {
+	                signingCertificate = retrieveAndVerifyCertificateChain(signingCertificateChainUrl);
+
+	                // if certificate is valid, then add it to the cache
+	                CERTIFICATE_CACHE.put(signingCertificateChainUrl, signingCertificate);
+	            }
+
+	            // verify that the request was signed by the provided certificate
+	            Signature signature = Signature.getInstance(signingCertificate.getSigAlgName());
+	            signature.initVerify(signingCertificate.getPublicKey());
+	            signature.update(serializedSpeechletRequest);
+	            byte[] decodedBase64Sig = Base64.decodeBase64(baseEncoded64Signature);
+					
+				def sha1HashValueOfRequestBody = sha256Digest(serializedSpeechletRequest)
+				log.warn("sha1HashValueOfRequestBody:" + sha1HashValueOfRequestBody)
+	            //log.warn("decodedBase64Sig:" + decodedBase64Sig)
+				// TODO: This is not working. Fix this. 
+				
+				if (!signature.verify(decodedBase64Sig)) {
+	                throw new SecurityException(
+	                        "Failed to verify the signature/certificate for the provided speechlet request - character encoding/ signature verification");
+	            }
+	        } catch (CertificateException ex ) {
+	            throw new SecurityException(
+	                    "Failed to verify the signature/certificate for the provided speechlet request - certificate exception " + ex.getMessage(),
+	                    ex);
+	        }catch ( SignatureException  ex) {
+	            throw new SecurityException(
+	                    "Failed to verify the signature/certificate for the provided speechlet request - signature exception " + ex.getMessage(),
+	                    ex);
+	        }catch (NoSuchAlgorithmException ex) {
+	            throw new SecurityException(
+	                    "Failed to verify the signature/certificate for the provided speechlet request no such algorithm" + ex.getMessage(),
+	                    ex);
+	        }catch (InvalidKeyException  ex) {
+	            throw new SecurityException(
+	                    "Failed to verify the signature/certificate for the provided speechlet request - invalid key "
+	                    + "" + ex.getMessage(),
+	                    ex);
+	        }catch (IOException ex) {
+	            throw new SecurityException(
+	                    "Failed to verify the signature/certificate for the provided speechlet request - io exception" + ex.getMessage(),
+	                    ex);
+	        }
+	        
+	        
+	    }
+
+	    /**
+	     * Retrieves the certificate from the specified URL and confirms that the certificate is valid.
+	     *
+	     * @param signingCertificateChainUrl
+	     *            the URL to retrieve the certificate chain from
+	     * @return the certificate at the specified URL, if the certificate is valid
+	     * @throws CertificateException
+	     *             if the certificate cannot be retrieve or is invalid
+	     */
+	    def retrieveAndVerifyCertificateChain(
+	            final String signingCertificateChainUrl) throws CertificateException {
+	    	
+	    	InputStream inputStream = null;
+	        try {
+	        	inputStream =
+	                    getAndVerifySigningCertificateChainUrl(signingCertificateChainUrl).openStream();
+	            CertificateFactory certificateFactory =
+	                    CertificateFactory.getInstance(AlexaSdk.SIGNATURE_CERTIFICATE_TYPE);
+	            @SuppressWarnings("unchecked")
+	            Collection<X509Certificate> certificateChain =
+	                    (Collection<X509Certificate>) certificateFactory.generateCertificates(inputStream);
+	            /*
+	             * check the before/after dates on the certificate date to confirm that it is valid on
+	             * the current date
+	             */
+	            X509Certificate signingCertificate = certificateChain.iterator().next();
+	            signingCertificate.checkValidity();
+
+	            // check the certificate chain
+	            TrustManagerFactory trustManagerFactory =
+	                    TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+	            trustManagerFactory.init((KeyStore) null);
+
+	            X509TrustManager x509TrustManager = null;
+	            for (TrustManager trustManager : trustManagerFactory.getTrustManagers()) {
+	                if (trustManager instanceof X509TrustManager) {
+	                    x509TrustManager = (X509TrustManager) trustManager;
+	                }
+	            }
+
+	            if (x509TrustManager == null) {
+	                throw new IllegalStateException(
+	                        "No X509 TrustManager available. Unable to check certificate chain");
+	            } else {
+	                x509TrustManager.checkServerTrusted(
+	                        certificateChain.toArray(new X509Certificate[certificateChain.size()]),
+	                        AlexaSdk.SIGNATURE_KEY_TYPE);
+	            }
+
+	            /*
+	             * verify Echo API's hostname is specified as one of subject alternative names on the
+	             * signing certificate
+	             */
+	            if (!subjectAlernativeNameListContainsEchoAlexaSdkDomainName(signingCertificate
+	                    .getSubjectAlternativeNames())) {
+	                throw new CertificateException(
+	                        "The provided certificate is not valid for the Echo SDK");
+	            }
+
+	            return signingCertificate;
+	        } catch (KeyStoreException  ex) {
+	            throw new CertificateException("Unable to verify certificate at URL: "
+	                    + signingCertificateChainUrl, ex);
+	        }catch ( IOException  ex) {
+	            throw new CertificateException("Unable to verify certificate at URL: "
+	                    + signingCertificateChainUrl, ex);
+	        }catch (NoSuchAlgorithmException ex) {
+	            throw new CertificateException("Unable to verify certificate at URL: "
+	                    + signingCertificateChainUrl, ex);
+	        }
+	        
+	    }
+
+	    def subjectAlernativeNameListContainsEchoAlexaSdkDomainName(
+	            final Collection<List<?>> subjectAlternativeNameEntries) {
+	        for (List<?> entry : subjectAlternativeNameEntries) {
+	            // first ensure that the subject alternative entry is in the expected form
+	            if (entry.get(0) instanceof Integer && entry.get(1) instanceof String) {
+	                /*
+	                 * if the entry is for a domain name and that domain name matches the domain name
+	                 * for the echo sdk then return true
+	                 */
+	                if (DOMAIN_NAME_SUBJECT_ALTERNATIVE_NAME_ENTRY.equals(entry.get(0))
+	                        && AlexaSdk.ECHO_API_DOMAIN_NAME.equals((entry.get(1)))) {
+	                    return true;
+	                }
+	            }
+	        }
+	        return false;
+	    }
+
+	    /**
+	     * Verifies the signing certificate chain URL and returns a {@code URL} object.
+	     *
+	     * @param signingCertificateChainUrl
+	     *            the external form of the URL
+	     * @return the URL
+	     * @throws CertificateException
+	     *             if the URL is malformed or contains an invalid hostname, an unsupported protocol,
+	     *             or an invalid port (if specified)
+	     */
+	     def getAndVerifySigningCertificateChainUrl(final String signingCertificateChainUrl)
+	            throws CertificateException {
+	        try {
+	            URL url = new URI(signingCertificateChainUrl).normalize().toURL();
+	            // Validate the hostname
+	            if (!VALID_SIGNING_CERT_CHAIN_URL_HOST_NAME.equalsIgnoreCase(url.getHost())) {
+	                throw new CertificateException(String.format(
+	                        "SigningCertificateChainUrl [%s] does not contain the required hostname"
+	                                + " of [%s]", signingCertificateChainUrl,
+	                        VALID_SIGNING_CERT_CHAIN_URL_HOST_NAME));
+	            }
+
+	            // Validate the path prefix
+	            String path = url.getPath();
+	            if (!path.startsWith(VALID_SIGNING_CERT_CHAING_URL_PATH_PREFIX)) {
+	                throw new CertificateException(String.format(
+	                        "SigningCertificateChainUrl path [%s] is invalid. Expecting path to "
+	                                + "start with [%s]", signingCertificateChainUrl,
+	                        VALID_SIGNING_CERT_CHAING_URL_PATH_PREFIX));
+	            }
+
+	            // Validate the protocol
+	            String urlProtocol = url.getProtocol();
+	            if (!VALID_SIGNING_CERT_CHAIN_PROTOCOL.equalsIgnoreCase(urlProtocol)) {
+	                throw new CertificateException(String.format(
+	                        "SigningCertificateChainUrl [%s] contains an unsupported protocol [%s]",
+	                        signingCertificateChainUrl, urlProtocol));
+	            }
+
+	            // Validate the port uses the default of 443 for HTTPS if explicitly defined in the URL
+	            int urlPort = url.getPort();
+	            if ((urlPort != UNSPECIFIED_SIGNING_CERT_CHAIN_URL_PORT_VALUE)
+	                    && (urlPort != url.getDefaultPort())) {
+	                throw new CertificateException(String.format(
+	                        "SigningCertificateChainUrl [%s] contains an invalid port [%d]",
+	                        signingCertificateChainUrl, urlPort));
+	            }
+
+	            return url;
+	        } catch (IllegalArgumentException  ex) {
+	            throw new CertificateException(String.format(
+	                    "SigningCertificateChainUrl [%s] is malformed", signingCertificateChainUrl), ex);
+	        }catch ( MalformedURLException  ex) {
+	            throw new CertificateException(String.format(
+	                    "SigningCertificateChainUrl [%s] is malformed", signingCertificateChainUrl), ex);
+	        }catch (URISyntaxException ex) {
+	            throw new CertificateException(String.format(
+	                    "SigningCertificateChainUrl [%s] is malformed", signingCertificateChainUrl), ex);
+	        }
+	    }
+}

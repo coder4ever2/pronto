@@ -1,0 +1,18 @@
+package omniapi
+
+import java.util.Date;
+
+
+class Picture {
+	Date dateCreated
+	Date lastUpdated
+	String originalFilename
+	String mimeType
+	Integer fileSize = new Interger(0)
+	String filename
+	String filePath
+
+	static belongsTo = [user:User]
+	static constraints = {
+	}
+}

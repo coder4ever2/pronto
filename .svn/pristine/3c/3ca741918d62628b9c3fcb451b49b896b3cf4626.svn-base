@@ -1,0 +1,154 @@
+package omniapi
+
+import grails.converters.JSON
+import grails.transaction.Transactional
+
+import org.codehaus.groovy.grails.web.json.JSONArray;
+import org.codehaus.groovy.grails.web.json.JSONElement
+import org.codehaus.groovy.grails.web.json.JSONObject;
+//import org.grails.web.json.JSONArray
+//import org.grails.web.json.JSONElement
+//import org.grails.web.json.JSONObject
+import org.springframework.http.HttpMethod
+
+@Transactional
+class OneSignalApiCallService {
+
+    static String APP_ID = "d342f3c8-e423-4131-a27d-0ff118c4cf41"
+    static final int TIMEOUT = 120000
+    static String REST_KEY = "YjlmOGZmMjgtMGUzMS00NDVkLWJiZmUtNDBlZDZkNzFiMWU5";
+
+    def serviceMethod() {
+
+    }
+
+    def postNotification(JSONObject data, String[] androidPlayers) {
+        String postNotificationUrl = "https://onesignal.com/api/v1/notifications"
+        URL url = new URL(postNotificationUrl)
+
+        JSONObject jsonObject = new JSONObject()
+        JSONObject jsonObjects = new JSONObject()
+        JSONArray jsonArray = new JSONArray();
+        /*
+            Format of the OneSignal payload
+            {
+                "app_id": "5eb5a37e-b458-11e3-ac11-000c2940e62c",
+                "included_segments": ["All"],
+                "data": {"foo": "bar"},
+                "contents": {"en": "English Message"}
+            }
+        */
+
+        androidPlayers.each { playerId ->
+            if (!playerId.startsWith("000")) {
+                jsonArray.add(playerId)
+            }
+        }
+
+        jsonObjects.put("en", data.getString("alert"))
+
+        log.debug("Data is: " + data.toString())
+        jsonObject.put("app_id", APP_ID)
+        jsonObject.put("data", data)
+        jsonObject.put("android_background_data", true)
+        jsonObject.put("include_player_ids", jsonArray)
+        //jsonObject.put("contents", jsonObjects)
+
+        log.debug("JSON string object: " + jsonObject.toString())
+
+        String jsonResponse = getResponseFromUrl(url, true, jsonObject.toString(), HttpMethod.POST)
+        log.debug("Json Response is ${jsonResponse}")
+        if (jsonResponse) {
+            JSONElement userJson = JSON.parse(jsonResponse)
+            return userJson
+        }
+
+    }
+
+    String getResponseFromUrl(URL url, boolean isJSON, String data, HttpMethod httpMethod) {
+        DataOutputStream outputStream;
+
+        String json = null;
+
+        URI uri = new URI(url.getProtocol(), url.getUserInfo(), url.getHost(), url.getPort(), url.getPath(), url.getQuery(), url.getRef());
+        url = uri.toURL();
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setUseCaches(false);
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(TIMEOUT);
+        conn.setReadTimeout(TIMEOUT);
+        conn.setRequestProperty("Connection", "Keep-Alive");
+        conn.setRequestProperty("Authorization", REST_KEY)
+        if (isJSON) {
+            conn.setDoInput(true);
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.setRequestMethod("POST");
+        }
+
+        try {
+
+            if (data != null && !data.isEmpty() && httpMethod == HttpMethod.POST) {
+                outputStream = new DataOutputStream(conn.getOutputStream())
+                outputStream.writeBytes(data)
+            }
+
+            if (outputStream != null) {
+                outputStream.flush()
+                outputStream.close()
+            }
+
+            /*conn.connect()
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(conn.getInputStream()))
+                sb = new StringBuilder()
+                String inputLine
+
+                while ((inputLine = bufferedReader.readLine()) != null) {
+                    sb.append(inputLine)
+                }
+
+                bufferedReader.close()*/
+
+            int httpResponse = conn.getResponseCode();
+
+            InputStream inputStream;
+            Scanner scanner;
+            if (httpResponse == HttpURLConnection.HTTP_OK) {
+                inputStream = conn.getInputStream();
+                scanner = new Scanner(inputStream, "UTF-8");
+                json = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                scanner.close();
+
+
+            } else {
+                inputStream = conn.getErrorStream();
+                if (inputStream == null)
+                    inputStream = conn.getInputStream();
+
+                if (inputStream != null) {
+                    scanner = new Scanner(inputStream, "UTF-8");
+                    json = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    scanner.close();
+                    log.debug(" RECEIVED JSON: " + json);
+                } else
+                    log.debug(" HTTP Code: " + httpResponse + " No response body!");
+
+
+            }
+        } catch (Throwable t) {
+            if (t instanceof ConnectException || t instanceof UnknownHostException)
+                log.debug("Could not send last request, device is offline. Throwable: " + t.getClass().getName());
+            else
+                log.debug(" Error thrown from network stack. ", t);
+
+        } finally {
+            if (outputStream != null) {
+                outputStream.close()
+            }
+            if (conn != null) {
+                conn.disconnect()
+            }
+        }
+        log.info("RETURNING RESPONSE")
+        return json
+    }
+}

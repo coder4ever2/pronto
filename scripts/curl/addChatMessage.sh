@@ -1,0 +1,1 @@
+curl -d '{"user_id":"2", "message_to":"4", "message":"Hello there back", "message_push":"Hello there back", "message_id":"lkjasdlkjflaksjdflkjaasdf", "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/addChatMessage

@@ -1,0 +1,254 @@
+package omniapi
+
+//import nayax.Picture;
+import omniapi.ChatMessage.MessageType;
+import omniapi.Device.DeviceType;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+
+import com.twilio.sdk.TwilioRestClient;
+import com.twilio.sdk.resource.factory.MessageFactory
+import com.twilio.sdk.resource.instance.Message;
+import org.codehaus.groovy.grails.commons.ConfigurationHolder
+
+import grails.transaction.Transactional
+
+@Transactional
+class ApiService {
+	def smsService
+	def twilio_apiID = 'AC02df9ce1610adb63ea980d363d435b16'//'ACcfd1847026a68c27fa2b90b9fa48d008'
+	def twilio_apiPass = '0a14bd65dfe9978f8a0547905503c67d'//'858d0a2577486912879e5feb5ffe70de'
+	
+	
+	def serviceMethod() {
+
+    }
+	
+	/*def sendVerificationCode(){
+		def map = [to:"+919000520792",from:"+14154231013",body:"SMS TEST"]
+		smsService.send(map)
+
+	}*/
+	
+	public Boolean saveObject(def obj) {
+		log.trace "Inside saveObject for ${obj}"
+		if (obj.validate()) {
+			log.trace "Object validated."
+			obj.errors.allErrors.each { log.error it }
+			obj.save(flush:true)
+			return true
+		} else {
+			log.trace "Object validation failed."
+			obj.errors.allErrors.each { log.error it }
+			obj.discard()
+			return false
+		}
+	}
+	
+	def populateUser(def request){
+		def json = request.JSON
+        Device device = new Device (deviceType:DeviceType.valueOf(json.deviceType), token:json.deviceToken)
+		Picture picture 
+		if(json.image){
+			byte[] imageByteArray = Base64.decodeBase64(json.image);
+			picture= saveImage(imageByteArray)
+		}
+		
+		User user = new User(firstName: json.firstName,
+			lastName:json.lastName,
+			email:json.email,
+			phone: json.phone,
+			fid:json.fid,
+			device:device, 
+			picture: picture)
+		return user
+	}
+	
+	
+	private Picture saveImage(byte[] imageByteArray) {
+		//def multipartFile = request.getFile("image");
+		Picture picture
+		//log.info("File type/name : "+ multipartFile.getContentType()+":"+multipartFile.getOriginalFilename())
+		//if (multipartFile.getContentType() in ['image/jpeg', 'image/gif', 'image/png', 'image/bmp', 'image/jpg']) {
+		def filename = UUID.randomUUID().toString()
+		def fileExtension = '.jpg'
+		//def originalFilename = multipartFile.getOriginalFilename()
+		//def fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."), originalFilename.length())
+		def fullFilePath = ConfigurationHolder.config.pictureLocation+filename+fileExtension
+		FileOutputStream imageOutFile = new FileOutputStream(
+			fullFilePath);
+		imageOutFile.write(imageByteArray);
+		imageOutFile.close();
+		
+		Integer fileSizeValue = new Interger(0)
+		  
+		picture = new Picture(mimeType: fileExtension,
+			filename: filename+fileExtension,
+			fileSize: fileSizeValue,
+			originalFilename: filename+fileExtension,
+			filePath: fullFilePath)
+			
+		//saveObject(picture)
+		
+		/*if (picture.validate()) {
+			picture.save()
+			picture.flush
+			//TODO - thumbnail
+			//File targetThumbNailFile = new File(ConfigurationHolder.config.pictureLocation, 'tn_' +filename +fileExtension )
+			//def thumbnailImage = imageService.getThumbNail(targetFile, ConfigurationHolder.config.pictureWidth as Integer)
+			//ImageIO.write(thumbnailImage, fileExtension.substring(1), targetThumbNailFile);
+		}*/
+		return picture
+	}
+	
+	def sendVerificationCode(def to) {
+		TwilioRestClient client = new TwilioRestClient(twilio_apiID, twilio_apiPass);
+		VerificationCode verificationCode = new VerificationCode(phone:to, code:'898989')
+		saveObject(verificationCode)
+	   
+		 // Build the parameters
+		 List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		 nameValuePairs.add(new BasicNameValuePair("From", "+14154231013"));
+		 nameValuePairs.add(new BasicNameValuePair("To", to ));//"+919000520792"));
+		 nameValuePairs.add(new BasicNameValuePair("Body", "Here is your verification code - 898989"));
+		 //params.add(new BasicNameValuePair("MediaUrl", "http://farm2.static.flickr.com/1075/1404618563_3ed9a44a3a.jpg"));
+	   
+		 MessageFactory messageFactory = client.getAccount().getMessageFactory();
+		 Message message = messageFactory.create(nameValuePairs);
+		 log.trace(message.getSid());
+	   }
+	
+	def confirmVerificationCode(def json){
+		def results = VerificationCode.findWhere(phone: json.phone, code: json.code)
+		return results !=null
+	}
+/**
+ * INPUT:  
+
+Add chat message 
+
+ user_id = 5
+ message_to = 9 
+ message_type=0
+ message= Hello,
+ localtime=2015-11-17 15:56:10 
+ message_push = Hello 
+ message_id=5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz
+
+OUTPUT:
+
+Add chat message Response oDict = {
+
+    "chat_message_info" =     {
+        "chat_id" = 1;
+        "chat_random_id" = "9__adtW3Cmz5pBaqno2i94UXNEIjsiO";
+        "created_time" = "2015-11-17 05:26:12";
+        "display_name" = "Ravi Chokshi";
+        "first_name" = Ravi;
+        id = 146;
+        "image_path" = "";
+        "last_name" = Chokshi;
+        localtime = "2015-11-17 15:56:10";
+        message = Hello;
+        "message_by" = 5;
+        "message_id" = "5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz";
+        "message_to" = 9;
+        "message_type" = 0;
+        "profile_pic" = "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024";
+        "thirdparty_id" = 711485842331132;
+        "thumb_path" = "";
+    };
+    msg = "You have successfully create the chat message";
+    "status_code" = 1;
+}
+ * @param request
+ * @param params
+ * @return
+ */
+	def addChatMessage(def request, def params){
+		def results = [:]
+		def json = request.JSON
+		def userId = json.user_id
+		def messageTo = json.message_to
+		def messageType = json.message_type
+		def message = json.message
+		def localTime = json.localtime
+		def messagePush = json.message_push
+		def messageId = json.message_id
+		
+		User sender = User.findById(userId)
+		User receiver = User.findById(messageTo)
+		Chat chat = Chat.doesChatExist(sender, receiver) 
+		if(!chat){
+			chat = new Chat(chatCreatedBy: sender,
+							chatCreatedTo: receiver, 
+							isActive: true, 
+							unreadCount: 0, 
+							dateCreated: new Date(), 
+							chatRandomId: UUID.randomUUID().toString())
+			
+		}
+		ChatMessage chatMessage = new ChatMessage(chat: chat, 
+													message: message, 
+													messageBy: sender, 
+													messageTo: receiver,
+													messageType: MessageType.TEXT,
+													messageId: messageId )
+		/*
+		"chat_message_info" =     {
+        "chat_id" = 1;
+        "chat_random_id" = "9__adtW3Cmz5pBaqno2i94UXNEIjsiO";
+        "created_time" = "2015-11-17 05:26:12";
+		"display_name" = "Ravi Chokshi";
+		"first_name" = Ravi;
+		id = 146;
+		"image_path" = "";
+		"last_name" = Chokshi;
+		localtime = "2015-11-17 15:56:10";
+		message = Hello;
+		"message_by" = 5; Nirav
+		"message_id" = "5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz";
+		"message_to" = 9;
+		"message_type" = 0;
+		"profile_pic" = "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024";
+		"thirdparty_id" = 711485842331132;
+		"thumb_path" = "";
+		};
+		msg = "You have successfully create the chat message";
+		"status_code" = 1;
+		*/
+	
+		results.chat_message_info =[:]
+		results.chat_message_info = [chat_id : chat.id,
+										chat_random_id : chat.chatRandomId,
+										created_time : chat.dateCreated,
+										display_name : sender.firstName + ' ' +sender.lastName,
+										first_name: sender.firstName,
+										'id':chatMessage.id,
+										image_path:'',
+										last_name : sender.lastName,
+										localtime : "2015-11-17 15:56:10",
+										message : message,
+										"message_by" : sender.id,
+										"message_id" : messageId,
+										"message_to" : receiver.id,
+										"message_type" : 0,
+										"profile_pic" : "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024",
+										"thirdparty_id" : 711485842331132,
+										"thumb_path" : ""]
+			
+	}
+
+	def addReview(def request, def params){
+		def results = [:]
+		def json = request.JSON
+		BusinessReview businessReview = new BusinessReview(reviewer: User.findById(json.userId), )
+	
+	}
+
+	def getReviews (def request, def params){
+	
+	}
+}

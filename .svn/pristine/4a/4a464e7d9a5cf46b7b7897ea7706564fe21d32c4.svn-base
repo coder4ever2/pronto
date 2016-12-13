@@ -1,0 +1,59 @@
+package omniapi
+
+import java.util.Date;
+
+class Business extends User{
+	
+	String name
+	Address address
+	String googleId
+	String icon
+	String openHours
+	String businessPhone
+	String addressString
+	String firstName = "My"
+	String lastName = "Business"
+	String email = 'info@omni.com'
+	String phone = 'Phone'
+	static hasMany = [businessReviews:BusinessReview, claimers:User]
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	String latitude
+	String longitude
+	String website
+	
+	
+    static constraints = {
+		name nullable: false
+		address nullable: true
+		googleId nullable:true
+		icon nullable:true
+		openHours nullable:true
+		businessPhone nullable:true
+		addressString nullable:true
+		latitude nullable:true
+		longitude nullable:true
+		website nullable:true
+		
+    }
+	String getJson(){
+		def business = [:]
+		business.name = name
+		business.lastName = lastName
+		business.email = email
+		business.phone = businessPhone?:''
+		business.fid = fid?:''
+		business.icon = icon?:''
+		business.openHours = openHours?:''
+		business.addressString = addressString?:'';
+		business.claimers = claimers.collect{it.id}?:''
+		business.externalBusinessId = googleId
+		business.latitude = latitude?:''
+		business.longitude = longitude?:''
+		business.website = website?:''
+		return business
+	}
+	def getBusinessId(){
+		return googleId
+	}
+}

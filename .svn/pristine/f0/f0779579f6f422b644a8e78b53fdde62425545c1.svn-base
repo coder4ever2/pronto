@@ -1,0 +1,28 @@
+package omniapi
+
+import java.util.Date;
+
+class User {
+	String firstName
+	String lastName
+	String email
+	String phone
+	String fid
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	Device device
+	Picture picture
+	Boolean isPhoneVerified = false
+
+    static constraints = {
+		email blank: false, email: true
+		firstName blank:false
+		lastName blank:false
+		phone blank:false
+		fid nullable:true
+		picture nullable:true
+    }
+	static mapping = {
+		tablePerHierarchy false
+	}
+}

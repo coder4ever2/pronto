@@ -1,0 +1,107 @@
+package omniapi
+
+//import nayax.Picture;
+import omniapi.Device.DeviceType;
+
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+
+import com.twilio.sdk.TwilioRestClient;
+import com.twilio.sdk.resource.factory.MessageFactory
+import com.twilio.sdk.resource.instance.Message;
+
+import grails.transaction.Transactional
+
+@Transactional
+class ApiService {
+	def smsService
+	def twilio_apiID = 'AC02df9ce1610adb63ea980d363d435b16'//'ACcfd1847026a68c27fa2b90b9fa48d008'
+	def twilio_apiPass = '0a14bd65dfe9978f8a0547905503c67d'//'858d0a2577486912879e5feb5ffe70de'
+	
+	
+	def serviceMethod() {
+
+    }
+	
+	/*def sendVerificationCode(){
+		def map = [to:"+919000520792",from:"+14154231013",body:"SMS TEST"]
+		smsService.send(map)
+
+	}*/
+	
+	public Boolean saveObject(def obj) {
+		log.trace "Inside saveObject for ${obj}"
+		if (obj.validate()) {
+			log.trace "Object validated."
+			obj.errors.allErrors.each { log.error it }
+			obj.save(flush:true)
+			return true
+		} else {
+			log.trace "Object validation failed."
+			obj.errors.allErrors.each { log.error it }
+			obj.discard()
+			return false
+		}
+	}
+	
+	def saveUser(def request){
+		def json = request.JSON
+        Device device = new Device (deviceType:DeviceType.valueOf(json.deviceType), token:json.deviceToken)
+		
+		User user = new User(firstName: json.firstName,
+			lastName:json.lastName,
+			email:json.email,
+			phone: json.phone,
+			fid:json.fid,
+			device:device)
+		saveObject(user)
+		//saveImage(request)
+		return user
+	}
+	
+	/*
+	 * private Picture saveImage(javax.servlet.http.HttpServletRequest request) {
+		def multipartFile = request.getFile("image");
+		Picture picture
+		log.info("File type/name : "+ multipartFile.getContentType()+":"+multipartFile.getOriginalFilename())
+		if (multipartFile.getContentType() in ['image/jpeg', 'image/gif', 'image/png', 'image/bmp', 'image/jpg']) {
+			def filename = UUID.randomUUID().toString()
+			def originalFilename = multipartFile.getOriginalFilename()
+			def fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."), originalFilename.length())
+
+			picture = new Picture(mimeType: multipartFile.getContentType(),
+				originalFilename: originalFilename,
+				fileSize: multipartFile.getSize(),
+				filename: filename+fileExtension,
+				filePath: ConfigurationHolder.config.pictureLocation)
+			log.info " mimeType  " + multipartFile.getContentType()
+			log.info " originalFilename  " + originalFilename
+			log.info " filePath  " + ConfigurationHolder.config.pictureLocation
+			if (picture.validate()) {
+				picture.save()
+				File targetFile = new File(ConfigurationHolder.config.pictureLocation, filename +fileExtension )
+				multipartFile.transferTo(targetFile)
+				File targetThumbNailFile = new File(ConfigurationHolder.config.pictureLocation, 'tn_' +filename +fileExtension )
+				def thumbnailImage = imageService.getThumbNail(targetFile, Setting.findBySettingType(SettingType.PIC_WIDTH).value as Integer)
+				ImageIO.write(thumbnailImage, fileExtension.substring(1), targetThumbNailFile);
+
+			}
+		}
+		return picture
+	}*/
+	
+	def sendVerificationCode(def to) {
+		TwilioRestClient client = new TwilioRestClient(twilio_apiID, twilio_apiPass);
+	   
+		 // Build the parameters
+		 List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		 nameValuePairs.add(new BasicNameValuePair("From", "+14154231013"));
+		 nameValuePairs.add(new BasicNameValuePair("To", to ));//"+919000520792"));
+		 nameValuePairs.add(new BasicNameValuePair("Body", "Here is your verification code - 979899"));
+		 //params.add(new BasicNameValuePair("MediaUrl", "http://farm2.static.flickr.com/1075/1404618563_3ed9a44a3a.jpg"));
+	   
+		 MessageFactory messageFactory = client.getAccount().getMessageFactory();
+		 Message message = messageFactory.create(nameValuePairs);
+		 log.trace(message.getSid());
+	   }
+}

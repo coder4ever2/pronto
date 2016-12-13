@@ -1,0 +1,52 @@
+package omniapi
+
+import grails.converters.JSON;
+import grails.rest.RestfulController
+
+class ApiController extends RestfulController {
+	static final String appName = 'Omni'
+    static responseFormats = ['json', 'xml']
+	
+	def apiService
+	
+    def index(def params) { 
+		def result = [:]
+		result['status']='success'
+		result['app_token']='97kjhasdf8iojnsdfl'
+		render result as JSON;
+	}
+	
+	def signup(def params) {
+		def result = [:]
+		User user = new User(firstName: params.firstName, 
+								lastName:params.lastName,
+								email:params.email,
+								phone: params.phone,
+								fid:params.fid)
+		if(apiService.saveObject(user)){
+			apiService.sendVerificationCode()
+			result['status']='Success'
+			result['message']=params.firstName +', you are successfully signed into '+appName
+		}else {
+			result['status']='Failure'
+			result['message']='Error. Please try again.'
+		}
+		render result as JSON
+		
+	}
+	
+	def verifyCode (def params){
+		def code = params.verificationCode
+		
+	}
+	
+	
+	def search (def params){
+		def searchString = params.searchString
+		def latitude = params.latitude
+		def longitude = params.longitude
+		def appToken = params.appToken
+	}
+	
+	
+}

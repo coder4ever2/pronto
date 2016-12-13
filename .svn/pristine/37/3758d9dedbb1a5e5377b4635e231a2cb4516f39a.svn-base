@@ -1,0 +1,36 @@
+package omniapi
+
+import java.util.Date;
+
+class Chat {
+	
+	User chatCreatedBy
+	User chatCreatedTo
+	String chatRandomId
+	Integer unreadCount
+	Date localtime
+	Boolean isActive
+	Boolean isAcceptImageTo
+	Boolean isAcceptImageBy
+	
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	
+
+    static constraints = {
+		chatRandomId nullable:true
+		isAcceptImageBy nullable:true
+		unreadCount nullable:true
+		localtime nullable:true
+		isActive nullable:true
+		isAcceptImageTo nullable:true
+		isAcceptImageBy nullable:true
+    }
+	Chat doesChatExist(User user1, User user2) {
+		Chat chat = Chat.findWhere(chatCreatedBy: user1, chatCreatedTo: user2)
+		if (!chat) {
+			chat = Chat.findWhere(chatCreatedBy: user2, chatCreatedTo: user1)
+		}
+		return chat
+	}
+}

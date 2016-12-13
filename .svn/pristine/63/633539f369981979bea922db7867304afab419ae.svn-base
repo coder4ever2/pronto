@@ -1,0 +1,10 @@
+package omniapi
+
+class BController {
+
+    def index() { 
+		if("495".equals(params.id)||"JavaMeUp".equals(params.name))
+			render (view:"index")
+		else render "Unknown request"
+	}
+}

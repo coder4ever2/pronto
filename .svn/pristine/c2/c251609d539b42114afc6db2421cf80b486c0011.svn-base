@@ -1,0 +1,1 @@
+for d in `ls *.sh`; do echo $d; cat $d; sh $d; echo " "; echo " "; echo "----"; done; echo "DONE";

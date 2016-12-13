@@ -1,0 +1,8 @@
+package omniapi
+
+class BController {
+
+    def index() { 
+		render (view:"index")
+	}
+}

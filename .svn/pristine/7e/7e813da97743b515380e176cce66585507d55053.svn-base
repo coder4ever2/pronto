@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Java Me Up</title>
+  <meta name="description" content="Java Me Up">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.1/css/font-awesome.min.css">
+  <link rel="stylesheet" href="css/style.min.css">
+  <link rel="stylesheet" href="css/hover.css">
+
+<style>
+/* Bounce To Right */
+.hvr-bounce-to-right {
+  display: inline-block;
+  vertical-align: middle;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  -webkit-transition-property: color;
+  transition-property: color;
+  -webkit-transition-duration: 0.5s;
+  transition-duration: 0.5s;
+  background-color: #79BD9A;
+  text-decoration: none;
+  color: white;
+  padding: 0.5em;
+ 
+}
+
+
+.hvr-bounce-to-right:before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #2098d1;
+  -webkit-transform: scaleX(0);
+  transform: scaleX(0);
+  -webkit-transform-origin: 0 50%;
+  transform-origin: 0 50%;
+  -webkit-transition-property: transform;
+  transition-property: transform;
+  -webkit-transition-duration: 0.5s;
+  transition-duration: 0.5s;
+  -webkit-transition-timing-function: ease-out;
+  transition-timing-function: ease-out;
+}
+.hvr-bounce-to-right:hover, .hvr-bounce-to-right:focus, .hvr-bounce-to-right:active {
+  color: white;
+}
+.hvr-bounce-to-right:hover:before, .hvr-bounce-to-right:focus:before, .hvr-bounce-to-right:active:before {
+  -webkit-transform: scaleX(1);
+  transform: scaleX(1);
+  -webkit-transition-timing-function: cubic-bezier(0.52, 1.64, 0.37, 0.66);
+  transition-timing-function: cubic-bezier(0.52, 1.64, 0.37, 0.66);
+}
+/* Bubble Top */
+.hvr-bubble-top {
+  display: inline-block;
+  vertical-align: middle;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+.hvr-bubble-top:before {
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+  content: '';
+  border-style: solid;
+  -webkit-transition-duration: 0.3s;
+  transition-duration: 0.3s;
+  -webkit-transition-property: transform;
+  transition-property: transform;
+  left: calc(50% - 10px);
+  top: 0;
+  border-width: 0 10px 10px 10px;
+  border-color: transparent transparent #e1e1e1 transparent;
+}
+.hvr-bubble-top:hover:before, .hvr-bubble-top:focus:before, .hvr-bubble-top:active:before {
+  -webkit-transform: translateY(-10px);
+  transform: translateY(-10px);
+}
+.userInfo {
+   animation: form-fly-up 0.45s ease;
+}
+@keyframes form-fly-up {
+   0% { transform: translateX(50px); }
+   50% { transform: translateX(-50px); }
+   100% { transform: translateX(0); }
+}
+</style>
+
+<script>
+function showUserInfoDiv(){
+	$('.userInfo').css({opacity: 1.0, display: "inline"});//.animate({opacity: 1.0});
+	$('#userInfoDiv').removeClass("userInfo").addClass("userInfo");
+	$('.form-control').focus();
+	$('.hvr-bounce-to-right').prop('disabled', true);
+	
+};
+</script>
+  <script>
+function myFunction() {
+    //document.getElementById("field2").value = document.getElementById("field1").value;
+    alert('Hi');
+}
+</script>
+<script>
+function onClickCheckMark(){
+	//$('#callBackNumberDiv').css('display', 'none');
+	//$('#nameDiv').css('display', 'inline');
+	//$('.userInfo').css.animate({form-fly-up 0.45s ease});
+	var phoneNumber = $('#numberInput').val(); //$("#numberInput").val() ; //$('#callBackNumberName').val();
+	var postData = {
+			userPhone : phoneNumber,	
+			businessPhone : '9724096838' 
+	}
+	$.ajax({
+		  method: "POST",
+		  url: "http://localhost:8080/OmniApi/api/callBusiness",
+		  data: postData,
+		  success: function (data) {
+			  console.log(data);
+              $('.userInfo').html(data.status);
+          },
+          error: function () {
+        	  console.log('failed');
+          }
+		});
+}
+</script>
+<script src="https://code.jquery.com/jquery-2.2.3.js"   integrity="sha256-laXWtGydpwqJ8JA+X9x2miwmaiKhn8tVmOVEigRNtP4=" crossorigin="anonymous"></script>
+
+</head>
+<body>
+  
+<header class="o-header">
+  <nav class="o-header-nav">
+    <a href="http://www.pronto.live/" class="o-header-nav__link"><i class="fa fa-arrow-left"></i> Powered by AI bot - Jay.</a>
+    <a href="http://www.pronto.live/" class="o-header-nav__link">Pronto <i class="fa fa-star"></i></a>
+  </nav>
+  <div class="o-container">
+    
+    	<div class="o-address">
+    		<img style="width:300px;height:300px;align:middle; margin:1em;" src="https://lh3.googleusercontent.com/YCxIzZ5eBSoaEGQxpKyWdBIuvx7kNQh3FJKH8YWdSZWfc7BcnJ6RBAsZ7z3FVsarMhMl3wxsNw=s250-rw-no"/>
+ 		</div>
+ 		<h1 class="o-header__title">Java Me Up</h1>
+ 		<p  class="o-address" >A range of coffees, teas & smoothies accompany sandwiches at this dog-friendly cafe with a patio.</p>
+    	<p  class="o-address" >401 Cimarron Trail # 150, Irving, TX 75063</p>
+    	<div class="o-address" style="text-align:center" >
+ 			
+ 				<a  class="hvr-bounce-to-right" onClick="showUserInfoDiv();"> <i class="fa fa-phone-square"></i>  Call with Jay!</a>				
+ 				
+ 					<div id="userInfoDiv" class="userInfo"  style="opacity:0.0;">
+			 		        <i class="fa fa-spinner fa-pulse fa-3x fa-fw margin-bottom" style="display: none;"></i>
+					 		<div id="callBackNumberDiv" class="input-group margin-bottom-sm" style="display: inline;">
+							 <!--  <span class="input-group-addon"><i class="fa fa-phone-square fa-fw" ></i></span> -->
+							  <input id="numberInput" name="numberInput" class="form-control" type="text" placeholder="Call back number">
+							</div>
+							<!-- 
+							<div id="nameDiv" class="input-group" style="display: none;" >
+							  <span class="input-group-addon"><i class="fa fa-key fa-fw" ></i></span>
+							  <input class="form-control" type="text" placeholder="Name">
+							</div> -->
+							<i id="checkSquareI" class="fa fa-check-square hvr-grow" aria-hidden="true" onClick="onClickCheckMark()"></i>
+							
+					</div> 
+				
+ 				
+ 		</div> 	
+ 		
+  </div>
+</header>
+<!-- 
+<main class="o-content" onclick="myFunction()">
+  <div class="o-container">
+    
+    <div class="c-slack">
+      <span class="c-slack__dot c-slack__dot--a"></span>
+      <p>I am a Bot</p>
+      <span class="c-slack__dot c-slack__dot--b"></span>
+      <p>that calls for you</p>
+      <span class="c-slack__dot c-slack__dot--c"></span>
+      <p>Click now.</p>
+      <span class="c-slack__dot c-slack__dot--d"></span>
+    </div>
+     -->
+
+    <div id="github-icons"></div>
+  </div>
+</main>
+
+<footer class="o-footer">
+  <div class="o-container">
+    <small>&copy; 2016, www.pronto.ai</small>
+  </div>
+</footer>
+
+
+
+</body>
+</html>

@@ -1,0 +1,192 @@
+package omniapi
+
+import grails.converters.JSON;
+import grails.rest.RestfulController
+
+class ApiController extends RestfulController {
+	static final String appName = 'Omni'
+    static responseFormats = ['json', 'xml']
+
+	
+	def apiService
+
+    ApiController(Class resource) {
+        super(resource)
+    }
+
+    def index(def params) {
+		def result = [:]
+		result['status']='success'
+		result['app_token']='97kjhasdf8iojnsdfl'
+		render result as JSON;
+	}
+	
+	def signup() {
+		def result = [:]
+		
+		result.message = [:]
+		def user = apiService.populateUser(request)
+		def saveResult = apiService.saveObject(user)
+		if(saveResult){
+			apiService.sendVerificationCode(user.phone)
+			result['status']='Success'
+			
+			result.message.summary=user.firstName +', a verification code has been sent to your phone to complete signup. -'+appName
+			result.message.details = user
+		}else {
+			result['status']='Failure'
+			result['message']='Error. Please try again.'
+		}
+		render result as JSON
+		
+	}
+	
+	def sendVerificationCode (def to){
+		def toPhone = to?to:"+919000520792"
+		apiService.sendVerificationCode(toPhone)
+	}
+	/*
+	 * 
+	 */
+	def resendVerificationCode (){
+		def result = [:]
+		try {
+			apiService.resendVerificationCode(request.JSON.phone)
+			result.status = 'success'
+		
+		} catch (Exception e) {
+			handleException(e)
+		}
+		render result as JSON
+	}
+	
+	def confirmVerificationCode (){
+		def results = [:]
+		if(apiService.confirmVerificationCode(request.JSON)){
+			results.status = 'Success'
+		}else
+			results.status = 'Failure'
+			
+		render results as JSON
+	}
+	
+	def findBusinesses(def params){
+		def results = [:]
+		results['status']='Success';
+		def searchResult1 =[:]
+		searchResult1.icon="http://maps.gstatic.com/mapfiles/place_api/icons/travel_agent-71.png"
+		searchResult1.id = "21a0b251c9b8392186142c798263e289fe45b4aa"
+		searchResult1.name = "Big Bazaar - Koti"
+		searchResult1.address = '4-5-158/4, Women\'s College Road, Koti, Hyderabad'
+		searchResult1.email = "email1@bigbazaar.com"
+		searchResult1.phone = "+9000678876"
+		searchResult1.distance = "1km"
+		searchResult1.reviews = '501 reviews'
+		searchResult1.opening_hours = [:]
+		searchResult1.opening_hours.open_now = true
+		searchResult1.opening_hours.message="10-5pm"
+			/*},
+			"photos" : [
+			   {
+				  "height" : 270,
+				  "html_attributions" : [],
+				  "photo_reference" : "CnRnAAAAF-LjFR1ZV93eawe1cU_3QNMCNmaGkowY7CnOf-kcNmPhNnPEG9W979jOuJJ1sGr75rhD5hqKzjD8vbMbSsRnq_Ni3ZIGfY6hKWmsOf3qHKJInkm4h55lzvLAXJVc-Rr4kI9O1tmIblblUpg2oqoq8RIQRMQJhFsTr5s9haxQ07EQHxoUO0ICubVFGYfJiMUPor1GnIWb5i8",
+				  "width" : 519
+			   }
+			],
+			"place_id" : "ChIJyWEHuEmuEmsRm9hTkapTCrk",
+			"scope" : "GOOGLE",
+			"alt_ids" : [
+			   {
+				  "place_id" : "D9iJyWEHuEmuEmsRm9hTkapTCrk",
+				  "scope" : "APP"
+			   }
+			],
+			"reference" : "CoQBdQAAAFSiijw5-cAV68xdf2O18pKIZ0seJh03u9h9wk_lEdG-cP1dWvp_QGS4SNCBMk_fB06YRsfMrNkINtPez22p5lRIlj5ty_HmcNwcl6GZXbD2RdXsVfLYlQwnZQcnu7ihkjZp_2gk1-fWXql3GQ8-1BEGwgCxG-eaSnIJIBPuIpihEhAY1WYdxPvOWsPnb2-nGb6QGhTipN0lgaLpQTnkcMeAIEvCsSa0Ww",
+			"types" : [ "travel_agency", "restaurant", "food", "establishment" ],
+			"vicinity" : "Pyrmont Bay Wharf Darling Dr, Sydney"
+		 }*/
+		def searchResults = []
+		searchResults.add(searchResult1)
+		def searchResult2 =[:]
+		
+		searchResult2.icon="http://maps.gstatic.com/mapfiles/place_api/icons/travel_agent-71.png"
+		searchResult2.id = "21a0b251c9b8392186142c798263e289fe45b4ab"
+		searchResult2.name = "Big Bazaar - Hitech city"
+		searchResult2.address = "F 48, 1st Floor, Inorbit Mall, Hitech City, Hyderabad"
+		searchResult2.email = "email2@bigbazaar.com"
+		searchResult2.phone = "+9000908876"
+		searchResult2.distance = "5.1km"
+		searchResult2.reviews = '10 reviews'
+		searchResult2.opening_hours = [:]
+		searchResult2.opening_hours.message="10-5pm"
+		searchResult2.opening_hours.open_now = true
+		searchResults.add(searchResult2)
+		
+		def searchResult3 =[:]
+		
+		searchResult3.icon="http://maps.gstatic.com/mapfiles/place_api/icons/travel_agent-71.png"
+		searchResult3.id = "21a0b251c9b8392186142c798263e289fe45b4ac"
+		searchResult3.name = "Big Bazaar - Kukatpally"
+		searchResult3.distance = "11.2km"
+		searchResult3.email = "email3@bigbazaar.com"
+		searchResult3.phone = "+9340678876"
+		
+		searchResult3.address = "Floor 2, APHB Commercial Complex, Near Shiva Parvati Theatre, Kukatpally, Hyderabad"
+		searchResult3.reviews = '1 review'
+		
+		searchResult3.opening_hours = [:]
+		searchResult3.opening_hours.message="10-5pm"
+		searchResult3.opening_hours.open_now = true
+		searchResults.add(searchResult3)
+		
+		results['searchResults']=searchResults
+		render results as JSON
+	}
+	
+
+	
+	def addChatMessage(){
+		def results = apiService.addChatMessage(request)
+		render results as JSON
+	}
+	
+	def getNewChatMessages(){
+		def result = [:]
+		try {
+			result = apiService.getNewChatMessages(request)
+		
+		} catch (Exception e) {
+			handleException(e)
+		}
+		render result as JSON
+	}
+	
+	def addReview(){
+		def results = apiService.addReview(request, params)
+		render results as JSON
+	}
+	
+	def handleException(Exception e) {
+		log.error("Exception:",e)
+		def result = [:]
+		result["status"] = "error"
+		if (e.cause?.message != null && !"null".equals(e.cause?.message)) {
+			result["message"] = "Error:" + e.getCause()?.getMessage()
+		} else {
+			try {
+				result["message"] = "Error:" +  e.details?.message
+			} catch (Exception ex) {
+				result["message"] = "Error:"
+			}
+		}
+	   
+		render result as JSON
+	}
+	
+	
+	
+}
+	
+	
+

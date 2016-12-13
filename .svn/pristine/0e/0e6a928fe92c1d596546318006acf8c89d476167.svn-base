@@ -1,0 +1,20 @@
+class UrlMappings {
+
+	static mappings = {
+		"/b/scrape"(controller: "b", action: "scrape")
+		"/b/search"(controller: "b", action: "search")
+		"/b/$name"(controller: "b", action: "index")
+        "/$controller/$action?/$id?(.$format)?"{
+            constraints {
+                // apply constraints here
+            }
+        }
+
+        "/"(view:"/index")
+        "500"(view:'/error')
+		"/robots.txt"(controller: "b", action: "robots")
+		"/sitemap.txt"(controller: "b", action: "sitemap")
+		"/business" (view: "/business")
+		"/about-us" (view: "/about-us")
+	}
+}

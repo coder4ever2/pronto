@@ -1,0 +1,1 @@
+curl -i -X POST -H "Content-Type: application/json"  -d '{"businessId":"1", "firstName":"Srinivas", "lastName":"Jaini", "email":"srinivasjaini@gmail.com", "phone":"+919000520792", "deviceType":"iOS", "deviceToken":"lkjasdlkjflaksjdflkjasdlkfjslakdfj"}' https://lisnx.com/omni/api/claimBusinessForNewUser

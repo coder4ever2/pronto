@@ -1,0 +1,58 @@
+package omniapi
+
+import java.util.Date;
+
+class User {
+	String firstName
+	String lastName
+	String email
+	String phone
+	String fid
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	Device device
+	Picture picture
+	Boolean isPhoneVerified = false
+	Business claimedBusiness
+
+    static constraints = {
+		email blank: false, email: true
+		firstName blank:false
+		lastName blank:false
+		phone blank:false
+		fid nullable:true
+		picture nullable:true
+		device nullable:true
+		claimedBusiness nullable:true
+    }
+	static mapping = {
+		tablePerHierarchy false
+	}
+	
+	def getFullName(){
+		return firstName + ' ' + lastName
+	}
+	def getDisplayName(){
+		if(this instanceof Business){
+			return ((Business)this).name
+		}
+		else return getFullName()
+	}
+	
+	def getJson(){
+		def user = [:]
+		user.id = id
+		user.firstName = firstName
+		user.lastName = lastName
+		user.email = email
+		user.phone = phone?:''
+		user.fid = fid?:''
+		user.deviceId = device?.id?:''
+		user.pictureUrl = picture?.getProfilePic()?:''
+		user.isPhoneVerified = isPhoneVerified;
+		user.claimedBusiness = claimedBusiness?:''
+		return user
+	}
+	
+	
+}

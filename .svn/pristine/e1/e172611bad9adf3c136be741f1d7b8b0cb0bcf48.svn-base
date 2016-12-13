@@ -1,0 +1,1 @@
+curl -i -X POST -H "Content-Type: application/json"  -d '{"firstName":"Srinivas", "lastName":"Jaini", "email":"srinivasjaini11@gmail.com", "phone":"+919000520792", "deviceType":"iOS", "deviceToken":"lkjasdlkjflaksjdflkjasdlkfjslakdfj"}' https://lisnx.com/omni/api/signup

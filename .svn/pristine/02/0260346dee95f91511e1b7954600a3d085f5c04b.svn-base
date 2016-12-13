@@ -1,0 +1,1 @@
+for d in `ls *.sh`; do echo $d | rev | cut -c 4- | rev; cat $d; done > allScripts.txt

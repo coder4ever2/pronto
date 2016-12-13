@@ -1,0 +1,28 @@
+addChatMessage
+curl -d '{"user_id":"2", "message_to":"4", "message":"Hello there back", "message_push":"Hello there back", "message_id":"lkjasdlkjflaksjdflkjaasdf", "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/addChatMessage
+addReview
+curl -i -X POST -H "Content-Type: application/json" -d '{"review":"Awesome!!!", "userId":1, "businessId":1}' https://lisnx.com/omni/api/addReview
+claimBusinessForNewUser
+curl -i -X POST -H "Content-Type: application/json"  -d '{"businessId":"1", "firstName":"Srinivas", "lastName":"Jaini", "email":"srinivasjaini@gmail.com", "phone":"+919000520792", "deviceType":"iOS", "deviceToken":"lkjasdlkjflaksjdflkjasdlkfjslakdfj"}' https://lisnx.com/omni/api/claimBusinessForNewUser
+claimBusinessForSignedUpUser
+curl -d '{"businessId":"1", "userId":2}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/claimBusinessForSignedUpUser
+createChat
+curl -d '{"user_id":"2", "message_to":"1", "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/createChat
+getAllChatMessages
+curl -d '{"user_id":"2",  "last_id":1,  "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getAllChatMessages
+getBusinessDetail
+curl -d '{"externalBusinessId":"ChIJR8yQRYi4yzsRtknL7SSsCqU"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getBusinessDetail;
+getChatMessages
+curl -d '{"user_id":1, "last_id":1, "other_user_id":2,  "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getChatMessages
+getChats
+curl -d '{"user_id":"2", "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getChats
+getMoreInfo
+curl -d '{"userId":2}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getMoreInfo
+getNewChatMessages
+curl -d '{"user_id":1, "last_id":24,  "timeStamp":"-8"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/getNewChatMessages
+getReviews
+curl -i -X POST -H "Content-Type: application/json" -d '{"businessId":1}' https://lisnx.com/omni/api/getReviews
+searchBusinesses
+curl -d '{"keyword":"shop", "latitude":"17.37", "longitude":"78.50"}' -H  "Content-Type: application/json" https://lisnx.com/omni/api/searchBusinesses;
+signup
+curl -i -X POST -H "Content-Type: application/json"  -d '{"firstName":"Srinivas", "lastName":"Jaini", "email":"srinivasjaini11@gmail.com", "phone":"+919000520792", "deviceType":"iOS", "deviceToken":"lkjasdlkjflaksjdflkjasdlkfjslakdfj"}' https://lisnx.com/omni/api/signup

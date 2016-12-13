@@ -1,0 +1,1 @@
+curl -H  "Content-Type: application/json" -d '{"to":"+15103786712"}' https://lisnx.com/omni/api/callWithVerificationCode

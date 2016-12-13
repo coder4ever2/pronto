@@ -1,0 +1,40 @@
+package omniapi
+
+import java.util.Date;
+
+class BusinessReview {
+	
+	static belongsTo = [business: Business]
+	User reviewer
+	String review
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	enum Smiley {
+		Unhappy {
+			def getUnicode() {
+				return "\\uD83D\\uDE20"
+			}
+		}
+		, Happy {
+			def getUnicode() {
+				return "\\uD83D\\uDE00"
+			}
+		}
+		, OK {
+			def getUnicode() {
+				return "\\uD83D\\uDE10"
+			}
+		}
+	}
+	Smiley smiley
+
+    static constraints = {
+		reviewer nullable:false
+		review nullable: true
+		smiley nullable:true
+    }
+	
+	static mapping = {
+		review(type: 'text')
+	}
+}

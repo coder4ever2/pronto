@@ -1,0 +1,514 @@
+package omniapi
+
+//import nayax.Picture;
+import java.net.URL;
+
+import omniapi.ChatMessage.MessageType;
+import omniapi.Device.DeviceType;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+
+import com.twilio.sdk.TwilioRestClient;
+import com.twilio.sdk.resource.factory.MessageFactory
+import com.twilio.sdk.resource.instance.Message;
+
+import org.codehaus.groovy.grails.commons.ConfigurationHolder
+import org.codehaus.groovy.grails.web.json.JSONElement;
+
+import grails.converters.JSON;
+import grails.transaction.Transactional
+
+@Transactional
+class ApiService {
+
+	private static final String SUCCESS = 'success'
+	def smsService
+	def twilio_apiID = 'AC02df9ce1610adb63ea980d363d435b16'//'ACcfd1847026a68c27fa2b90b9fa48d008'
+	def twilio_apiPass = '0a14bd65dfe9978f8a0547905503c67d'//'858d0a2577486912879e5feb5ffe70de'
+	def googleNearbyUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?key=AIzaSyB7jnM-YxeVmcrHtbIno1AHsJ3gqR8dKpw&radius=5000'
+		//location=-33.8670522,151.1957362&keyword=cruise
+	def googleBusinessDetails = 'https://maps.googleapis.com/maps/api/place/details/json?key=AIzaSyB7jnM-YxeVmcrHtbIno1AHsJ3gqR8dKpw&placeid='
+	
+	def serviceMethod() {
+
+    }
+	
+	/*def sendVerificationCode(){
+		def map = [to:"+919000520792",from:"+14154231013",body:"SMS TEST"]
+		smsService.send(map)
+
+	}*/
+	
+	public Boolean saveObject(def obj) {
+		log.trace "Inside saveObject for ${obj}"
+		if (obj.validate()) {
+			log.trace "Object validated."
+			obj.errors.allErrors.each { log.error it }
+			obj.save(flush:true)
+			return true
+		} else {
+			log.trace "Object validation failed."
+			obj.errors.allErrors.each { log.error it }
+			obj.discard()
+			return false
+		}
+	}
+	
+	def searchBusinesses(def request){
+		def results = [:]
+		def json = request.JSON
+		def latitude = json.latitude
+		def longitude = json.longitude
+		def keyword = json.keyword
+		def url = new URL(googleNearbyUrl+'&location='+latitude+','+longitude+'&keyword='+keyword)
+		def resultsFromGoogle = getResponseFromUrl(url)
+		log.info(resultsFromGoogle)
+		results.message=[:]
+		results.message.searchResults=[]
+		resultsFromGoogle.results.each {searchResult->
+			log.info(searchResult)
+			def searchResult1 =[:]
+			//searchResult1.icon=searchResult.icon
+			searchResult1.id = searchResult.id
+			searchResult1.name = searchResult.name
+			searchResult1.address = searchResult.vicinity
+			searchResult1.email = "TBD"
+			searchResult1.phone = "TBD"
+			searchResult1.distance = "TBD"
+			searchResult1.reviews = "TBD"
+			searchResult1.opening_hours = [:]
+			searchResult1.opening_hours.open_now = searchResult.opening_hours?.open_now
+			searchResult1.opening_hours.message=""
+			results.message.searchResults.add(searchResult1)
+		}
+		
+		
+		return results
+	}
+	def getBusinessDetail(def request){
+		def results = [:]
+		results.message=[:]
+		def json = request.JSON
+		def businessId = json.id
+		def resultFromGoogle = getBusinessDetailsFromGoogle(businessId)
+		results.message.details = resultFromGoogle
+		return results
+	}
+
+	private getBusinessDetailsFromGoogle(String businessId) {
+		def url = new URL(googleBusinessDetails +businessId)
+		def resultFromGoogle = getResponseFromUrl(url)
+		return resultFromGoogle
+	}
+	
+	def signup(def request){
+		def json = request.JSON
+		def result =[:]
+		result.message = [:]
+        Device device = new Device (deviceType:DeviceType.valueOf(json.deviceType), token:json.deviceToken)
+		Picture picture 
+		if(json.image){
+			byte[] imageByteArray = Base64.decodeBase64(json.image);
+			picture= saveImage(imageByteArray)
+		}
+		//TODO: check if user already exists 
+		User user = new User(firstName: json.firstName,
+			lastName:json.lastName,
+			email:json.email,
+			phone: json.phone,
+			fid:json.fid,
+			device:device, 
+			picture: picture)
+		def saveResult = saveObject(user)
+		if(saveResult){
+			sendVerificationCode(user.phone)
+			result['status']='Success'
+			
+			result.message.summary=user.firstName +', a verification code has been sent to your phone to complete signup. - OMNI'
+			result.message.details = user
+		}else {
+			result['status']='Failure'
+			result['message']='Error. Please try again.'
+		}
+		return result
+	}
+	
+	
+	private Picture saveImage(byte[] imageByteArray) {
+		//def multipartFile = request.getFile("image");
+		Picture picture
+		//log.info("File type/name : "+ multipartFile.getContentType()+":"+multipartFile.getOriginalFilename())
+		//if (multipartFile.getContentType() in ['image/jpeg', 'image/gif', 'image/png', 'image/bmp', 'image/jpg']) {
+		def filename = UUID.randomUUID().toString()
+		def fileExtension = '.jpg'
+		//def originalFilename = multipartFile.getOriginalFilename()
+		//def fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."), originalFilename.length())
+		def fullFilePath = ConfigurationHolder.config.pictureLocation+filename+fileExtension
+		FileOutputStream imageOutFile = new FileOutputStream(
+			fullFilePath);
+		imageOutFile.write(imageByteArray);
+		imageOutFile.close();
+		
+		Integer fileSizeValue = new Integer(0)
+		  
+		picture = new Picture(mimeType: fileExtension,
+			filename: filename+fileExtension,
+			fileSize: fileSizeValue,
+			originalFilename: filename+fileExtension,
+			filePath: fullFilePath)
+			
+		/*
+		if (picture.validate()) {
+			picture.save()
+			picture.flush
+			//TODO - thumbnail
+			//File targetThumbNailFile = new File(ConfigurationHolder.config.pictureLocation, 'tn_' +filename +fileExtension )
+			//def thumbnailImage = imageService.getThumbNail(targetFile, ConfigurationHolder.config.pictureWidth as Integer)
+			//ImageIO.write(thumbnailImage, fileExtension.substring(1), targetThumbNailFile);
+		}*/
+		return picture
+	}
+	
+	def resendVerificationCode(def to){
+		return sendVerificationCode(to)
+	}
+	def sendVerificationCode(def to) {
+		TwilioRestClient client = new TwilioRestClient(twilio_apiID, twilio_apiPass);
+		VerificationCode verificationCode = new VerificationCode(phone:to, code:'898989')
+		saveObject(verificationCode)
+	   
+		 // Build the parameters
+		 List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		 nameValuePairs.add(new BasicNameValuePair("From", "+14154231013"));
+		 nameValuePairs.add(new BasicNameValuePair("To", to ));//"+919000520792"));
+		 nameValuePairs.add(new BasicNameValuePair("Body", "Here is your verification code - 898989"));
+		 //params.add(new BasicNameValuePair("MediaUrl", "http://farm2.static.flickr.com/1075/1404618563_3ed9a44a3a.jpg"));
+	   
+		 MessageFactory messageFactory = client.getAccount().getMessageFactory();
+		 Message message = messageFactory.create(nameValuePairs);
+		 log.trace(message.getSid());
+	  }
+	
+	/**
+	 * 
+	 * @param json.phone user phone
+	 * @param json.code verification code
+	 * @param json.userId id of the user
+	 * @return
+	 */
+	def confirmVerificationCode(def json){
+		def verificationCode = VerificationCode.findWhere(phone: json.phone, code: json.code)
+		if(verificationCode){
+			User user = User.findWhere(phone: json.phone, id:json.userId)
+			if(user){
+				user.isPhoneVerified = true
+				saveObject(user)
+			}
+		}
+		
+		return verificationCode !=null
+	}
+/**
+ * INPUT:  
+
+Add chat message 
+
+ user_id = 5
+ message_to = 9 
+ message_type=0
+ message= Hello,
+ localtime=2015-11-17 15:56:10 
+ message_push = Hello 
+ message_id=5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz
+
+OUTPUT:
+
+Add chat message Response oDict = {
+
+    "chat_message_info" =     {
+        "chat_id" = 1;
+        "chat_random_id" = "9__adtW3Cmz5pBaqno2i94UXNEIjsiO";
+        "created_time" = "2015-11-17 05:26:12";
+        "display_name" = "Ravi Chokshi";
+        "first_name" = Ravi;
+        id = 146;
+        "image_path" = "";
+        "last_name" = Chokshi;
+        localtime = "2015-11-17 15:56:10";
+        message = Hello;
+        "message_by" = 5;
+        "message_id" = "5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz";
+        "message_to" = 9;
+        "message_type" = 0;
+        "profile_pic" = "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024";
+        "thirdparty_id" = 711485842331132;
+        "thumb_path" = "";
+    };
+    msg = "You have successfully create the chat message";
+    "status_code" = 1;
+}*/
+	
+	
+	/**
+	 * 
+	 * @param request
+	 * @param params
+	 * @return
+	 */
+	def addChatMessage(def request){
+		def results = [:]
+		def json = request.JSON
+		def userId = json.user_id
+		def messageTo = json.message_to
+		def messageType = json.message_type
+		def message = json.message
+		def localTime = json.localtime
+		def messagePush = json.message_push
+		def messageId = json.message_id
+		
+		User sender = User.findById(userId)
+		User receiver = User.findById(messageTo)
+		Chat chat = Chat.doesChatExist(sender, receiver) 
+		if(!chat){
+			chat = new Chat(chatCreatedBy: sender,
+							chatCreatedTo: receiver, 
+							isActive: true, 
+							unreadCount: 0, 
+							dateCreated: new Date(), 
+							chatRandomId: UUID.randomUUID().toString())
+			saveObject(chat)
+			
+		}
+		ChatMessage chatMessage = new ChatMessage(chat: chat, 
+													message: message, 
+													messageBy: sender, 
+													messageTo: receiver,
+													messageType: MessageType.TEXT,
+													messageId: messageId )
+		saveObject(chatMessage)
+		/*
+		"chat_message_info" =     {
+        "chat_id" = 1;
+        "chat_random_id" = "9__adtW3Cmz5pBaqno2i94UXNEIjsiO";
+        "created_time" = "2015-11-17 05:26:12";
+		"display_name" = "Ravi Chokshi";
+		"first_name" = Ravi;
+		id = 146;
+		"image_path" = "";
+		"last_name" = Chokshi;
+		localtime = "2015-11-17 15:56:10";
+		message = Hello;
+		"message_by" = 5; Nirav
+		"message_id" = "5_e1bAuck8U9_TvwFQ3mSOOJdF3csiovpIAk84Ouz";
+		"message_to" = 9;
+		"message_type" = 0;
+		"profile_pic" = "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024";
+		"thirdparty_id" = 711485842331132;
+		"thumb_path" = "";
+		};
+		msg = "You have successfully create the chat message";
+		"status_code" = 1;
+		*/
+	
+		results.chat_message_info =[:]
+		results.chat_message_info = [chat_id : chat.id,
+										chat_random_id : chat.chatRandomId,
+										created_time : chat.dateCreated,
+										display_name : sender.firstName + ' ' +sender.lastName,
+										first_name: sender.firstName,
+										'id':chatMessage.id,
+										image_path:'',
+										last_name : sender.lastName,
+										localtime : "2015-11-17 15:56:10",
+										message : message,
+										"message_by" : sender.id,
+										"message_id" : messageId,
+										"message_to" : receiver.id,
+										"message_type" : 0,
+										"profile_pic" : "http://graph.facebook.com/711485842331132/picture?width=1024&height=1024",
+										"thirdparty_id" : 711485842331132,
+										"thumb_path" : ""]
+			
+	}
+	/**
+	 * 
+	 * @param request
+	 * @return
+	 */
+	def getNewChatMessages(def request){
+		def results = [:]
+		results.status = SUCCESS
+		def json = request.JSON
+		def userId = json.user_id;
+		def lastId = json.last_id;
+		User user = User.findById(userId)
+		def chatMessages = ChatMessage.findAllByMessageToAndIdGreaterThan(user,lastId)
+		results.chatMessages = []
+		chatMessages.each {chatMessage ->
+			def chat = chatMessage.chat
+			def sender = chatMessage.messageBy
+			def aMessage = ['chat_id':chat.id, 
+							'chat_random_id':chat.chatRandomId, 
+							created_time:chatMessage.dateCreated,
+							'display_name':sender.firstName + ' ' + sender.lastName,
+							'first_name':sender.firstName,
+							'last_name':sender.lastName,
+							'id':chatMessage.id,
+							'image_path':'',//TODO: implement pic
+							'message':chatMessage.message,
+							'message_by':sender.id,
+							message_id:chatMessage.messageId,
+							messageTo:chatMessage.messageTo.id,
+							message_type:0,
+							profile_pic:"http://graph.facebook.com/1097236873637659/picture?width=1024&height=1024",
+							thumb_path:''
+							]
+			results.chatMessages.add(aMessage)
+		}
+		results.status_code=1
+		return results
+	}
+	/*
+	 * 1) STR_URL_list_new_chat_messages   
+INPUT:
+user_id= 5 last_id=143
+OUTPUT
+STR_URL_list_new_chat_messages Response  = {
+    info =     (
+                {
+            "chat_id" = 1;
+            "chat_random_id" = "9__adtW3Cmz5pBaqno2i94UXNEIjsiO";
+            "created_time" = "2015-11-17 06:19:52";
+            "display_name" = "Nirav Patel";
+            "first_name" = Nirav;
+            id = 147;
+            "image_path" = "";
+            "last_name" = Patel;
+            localtime = "2015-11-17 16:49:51";
+            message = Jfkgglhl;
+            "message_by" = 9;
+            "message_id" = "9_8tcLtueFkP_FM2QSUu5g9XRHT4rR26l1MTRkkkY";
+            "message_to" = 5;
+            "message_type" = 0;
+            "profile_pic" = "http://graph.facebook.com/1097236873637659/picture?width=1024&height=1024";
+            "thumb_path" = "";
+
+        }
+
+    );
+
+    msg = " You have successfully get the chat list ";
+
+    "status_code" = 1;
+
+
+}
+	 */
+	/**
+	 * 
+	 * @param json.id - business id
+	 * @param json.review - review
+	 * @param json.userId - user id
+	 * @return
+	 */
+	def addReview(def request){
+		def results = [:]
+		def json = request.JSON
+		Business business = Business.get(1);//TODO - fix hardcoding - findByGoogleId(json.id)
+		if(!business){
+			def businessDetails = getBusinessDetailsFromGoogle(json.id)
+			business = new Business (googleId:json.id, 
+									name:businessDetails.result.name,
+									addressString:businessDetails.result.formatted_address,
+									businessPhone:businessDetails.result.formatted_phone_number,
+									icon:businessDetails.result.icon,
+									openHours:businessDetails.result.opening_hours.weekday_text)
+			saveObject(business)
+		}
+		BusinessReview businessReview = new BusinessReview(reviewer: User.findById(json.userId),
+															review: json.review,
+															business : business )
+		saveObject(businessReview)
+		results.status = SUCCESS
+		return results
+	
+	}
+	/**
+	 * 
+	 * @param id - business id 
+	 * @param userId - user id
+	 * @return
+	 */
+	def getReviews (def request){
+		def results = [:]
+		results.message =[:]
+		def json = request.JSON
+		results.message.reviews=[]
+		results.status = SUCCESS
+		Business business = Business.get(1) //TODO get actual data, this is dummy hard code
+		if(business){
+			business.businessReviews.each {review ->
+				def aReview = ['userProfileUrl':'https://graph.facebook.com/v2.5/1273617912/picture',//TODO fix this pic url
+								review: review.review]
+				results.message.reviews.add(aReview)
+			}
+		}
+		results.message.isUserPhoneVerified = false
+		if(json.userId){
+			User user = User.findById(userId)
+			results.message.isUserPhoneVerified = user?.isPhoneVerified
+		}
+		return results
+	}
+	/**
+	 * 
+	 * @param json.userId - user id
+	 * @param json.id  - busines id
+	 * @param 
+	 * @return
+	 */
+	def claimBusinessForSignedUpUser (def request){
+		def results = [:]
+		def json = request.JSON
+		User user = User.findById(json.userId)
+		Business business = Business.findByGoogleId(id)
+		business.id=user.id
+		saveObject(business)
+	}
+	/**
+	 * 
+	 * @param json.firstName - user first name 
+	 * @param json.lastName - user last name
+	 * @param json.email  - user email 
+	 * @param json.phone - user phone
+	 * @param json.id - business id
+	 * @return
+	 */
+	def claimBusinessForNewUser(def request){
+		
+	}
+	
+	def getResponseFromUrl(URL url) {
+		String response = null;
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		try {
+			int respCode = conn.responseCode
+			if (respCode == 400) {
+				log.error("COULD NOT MAKE CONNECTION")
+				BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+			} else {
+				response = conn.getInputStream().getText()
+			}
+		} finally {
+			conn.disconnect()
+		}
+		JSONElement userJson = JSON.parse(response)
+		log.info(userJson)
+		return userJson;
+	}
+	
+	
+	
+}

@@ -1,0 +1,168 @@
+package omniapi
+
+
+
+import static org.springframework.http.HttpStatus.*
+import grails.transaction.Transactional
+
+@Transactional(readOnly = true)
+class AlexaUserController {
+	
+    static allowedMethods = [save: "POST", update: "PUT", delete: "DELETE"]
+	def apiService
+	
+	def beforeInterceptor = [action: this.&beforeInterceptor, except: []]
+	def beforeInterceptor(){
+		log.warn "Request with params: ${params} \n json : ${request.JSON} "
+		
+	}
+	def afterInterceptor = { model ->
+		log.warn "Tracing in afterInterceptor: ${actionUri}, ${params} \n json:  ${request.JSON} , \n response ${response}"
+	}
+	
+    def index(Integer max) {
+        params.max = Math.min(max ?: 10, 100)
+        respond AlexaUser.list(params), model:[alexaUserInstanceCount: AlexaUser.count()]
+    }
+
+    def show(AlexaUser alexaUserInstance) {
+        respond alexaUserInstance
+    }
+
+    def create() {
+        respond new AlexaUser(params)
+    }
+	
+	def signup() {
+		respond new AlexaUser(params)
+	}
+
+    @Transactional
+    def save(AlexaUser alexaUserInstance) {
+        if (alexaUserInstance == null) {
+            notFound()
+            return
+        }
+
+        if (alexaUserInstance.hasErrors()) {
+            respond alexaUserInstance.errors, view:'create'
+            return
+        }
+
+        alexaUserInstance.save flush:true
+
+        request.withFormat {
+            form multipartForm {
+                flash.message = message(code: 'default.created.message', args: [message(code: 'alexaUser.label', default: 'AlexaUser'), alexaUserInstance.id])
+                redirect alexaUserInstance
+            }
+            '*' { respond alexaUserInstance, [status: CREATED] }
+        }
+    }
+	@Transactional
+	def savePhone(AlexaUser alexaUserInstance) {
+		if (alexaUserInstance == null) {
+			notFound()
+			return
+		}
+
+		if (alexaUserInstance.hasErrors()) {
+			respond alexaUserInstance.errors, view:'create'
+			return
+		}
+
+		//alexaUserInstance.save flush:true
+		//TODO save verification code and send text
+		apiService.sendVerificationCodeForAlexa(alexaUserInstance.phone)
+
+		render(view: "verify", model: [alexaUserInstance: alexaUserInstance])
+		
+	}
+	
+	@Transactional
+	def verify(AlexaUser alexaUserInstance) {
+		if (alexaUserInstance == null) {
+			notFound()
+			return
+		}
+
+		if (alexaUserInstance.hasErrors()) {
+			respond alexaUserInstance.errors, view:'create'
+			return
+		}
+		
+		if(apiService.verifyCode(alexaUserInstance) ){
+			alexaUserInstance.isVerified = true
+			alexaUserInstance.save flush:true
+			flash.message = 'Congratulations, you have successfully signed up. You can now have Alexa connect your calls. Try now. '
+			flash.message2 = 'Here are some examples.'
+			flash.examples =['Alexa, call 415.999.1000', 
+								'Alexa, call pizza hut on State Street']
+	
+		}
+		else {
+			flash.message = "An unexpected error occurred. Please try again."
+		}
+
+		
+		render(view: "final", model: [alexaUserInstance: alexaUserInstance])
+		
+	}
+	
+
+    def edit(AlexaUser alexaUserInstance) {
+        respond alexaUserInstance
+    }
+
+    @Transactional
+    def update(AlexaUser alexaUserInstance) {
+        if (alexaUserInstance == null) {
+            notFound()
+            return
+        }
+
+        if (alexaUserInstance.hasErrors()) {
+            respond alexaUserInstance.errors, view:'edit'
+            return
+        }
+
+        alexaUserInstance.save flush:true
+
+        request.withFormat {
+            form multipartForm {
+                flash.message = message(code: 'default.updated.message', args: [message(code: 'AlexaUser.label', default: 'AlexaUser'), alexaUserInstance.id])
+                redirect alexaUserInstance
+            }
+            '*'{ respond alexaUserInstance, [status: OK] }
+        }
+    }
+
+    @Transactional
+    def delete(AlexaUser alexaUserInstance) {
+
+        if (alexaUserInstance == null) {
+            notFound()
+            return
+        }
+
+        alexaUserInstance.delete flush:true
+
+        request.withFormat {
+            form multipartForm {
+                flash.message = message(code: 'default.deleted.message', args: [message(code: 'AlexaUser.label', default: 'AlexaUser'), alexaUserInstance.id])
+                redirect action:"index", method:"GET"
+            }
+            '*'{ render status: NO_CONTENT }
+        }
+    }
+
+    protected void notFound() {
+        request.withFormat {
+            form multipartForm {
+                flash.message = message(code: 'default.not.found.message', args: [message(code: 'alexaUser.label', default: 'AlexaUser'), params.id])
+                redirect action: "index", method: "GET"
+            }
+            '*'{ render status: NOT_FOUND }
+        }
+    }
+}

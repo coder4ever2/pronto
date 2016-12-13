@@ -1,0 +1,32 @@
+package omniapi
+
+class BController {
+
+    def index() { 
+		def bId = params.name?.split("_")?.last();
+		if(bId){
+			def business = Business.get(bId)
+			if(business)
+				render (view:"index", model:[business:business])
+			else {
+				render 'Not found'
+			}
+		}else if(params.name){
+			def business = Business.findByRelativeURL(params.name)
+			if(business)
+				render (view:"index", model:[business:business])
+			else {
+				render 'Not found'
+			}
+		}
+		else {
+			render 'Not found'
+		}
+	}
+	def robots(){
+		render """
+			User-agent: *
+			Disallow:
+		"""
+	}
+}

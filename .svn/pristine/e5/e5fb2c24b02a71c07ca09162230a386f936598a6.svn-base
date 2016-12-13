@@ -1,0 +1,31 @@
+package omniapi
+
+import java.util.Date;
+
+class Business extends User{
+	
+	String name
+	Address address
+	String googleId
+	String icon
+	String openHours
+	String businessPhone
+	String addressString
+	String firstName = "My"
+	String lastName = "Business"
+	String email = 'info@omni.com'
+	String phone = 'Phone'
+	static hasMany = [businessReviews:BusinessReview]
+	Date dateCreated // grails will auto timestamp
+	Date lastUpdated // grails will auto timestamp
+	
+    static constraints = {
+		name nullable: false
+		address nullable: true
+		googleId nullable:true
+		icon nullable:true
+		openHours nullable:true
+		businessPhone nullable:true
+		addressString nullable:true
+    }
+}

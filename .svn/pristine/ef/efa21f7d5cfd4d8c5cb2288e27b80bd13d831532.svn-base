@@ -1,0 +1,16 @@
+package omniapi
+
+class AlexaUser {
+	
+	String phone
+	String alexaUserId
+	Boolean isVerified = false
+	String verificationCode
+	
+
+    static constraints = {
+		alexaUserId nullable:true
+		verificationCode nullable:true
+		phone nullable:true
+    }
+}

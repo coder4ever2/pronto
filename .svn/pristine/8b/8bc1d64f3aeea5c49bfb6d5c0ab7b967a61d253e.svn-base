@@ -1,0 +1,58 @@
+package omniapi
+
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+
+import com.twilio.sdk.TwilioRestClient;
+import com.twilio.sdk.resource.factory.MessageFactory
+import com.twilio.sdk.resource.instance.Message;
+
+import grails.transaction.Transactional
+
+@Transactional
+class ApiService {
+	def smsService
+	def twilio_apiID = 'AC02df9ce1610adb63ea980d363d435b16'//'ACcfd1847026a68c27fa2b90b9fa48d008'
+	def twilio_apiPass = '0a14bd65dfe9978f8a0547905503c67d'//'858d0a2577486912879e5feb5ffe70de'
+	
+	
+	def serviceMethod() {
+
+    }
+	
+	/*def sendVerificationCode(){
+		def map = [to:"+919000520792",from:"+14154231013",body:"SMS TEST"]
+		smsService.send(map)
+
+	}*/
+	
+	public Boolean saveObject(def obj) {
+		log.trace "Inside saveObject for ${obj}"
+		if (obj.validate()) {
+			log.trace "Object validated."
+			obj.errors.allErrors.each { log.error it }
+			obj.save(flush:true)
+			return true
+		} else {
+			log.trace "Object validation failed."
+			obj.errors.allErrors.each { log.error it }
+			obj.discard()
+			return false
+		}
+	}
+	
+	def sendVerificationCode(def to) {
+		TwilioRestClient client = new TwilioRestClient(twilio_apiID, twilio_apiPass);
+	   
+		 // Build the parameters
+		 List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		 nameValuePairs.add(new BasicNameValuePair("From", "+14154231013"));
+		 nameValuePairs.add(new BasicNameValuePair("To", to ));//"+919000520792"));
+		 nameValuePairs.add(new BasicNameValuePair("Body", "Here is your verification code - 979899"));
+		 //params.add(new BasicNameValuePair("MediaUrl", "http://farm2.static.flickr.com/1075/1404618563_3ed9a44a3a.jpg"));
+	   
+		 MessageFactory messageFactory = client.getAccount().getMessageFactory();
+		 Message message = messageFactory.create(nameValuePairs);
+		 log.trace(message.getSid());
+	   }
+}

@@ -1,0 +1,12 @@
+package omniapi
+
+import grails.async.DelegateAsync;
+import grails.transaction.Transactional
+
+@Transactional
+class AsyncApiService {
+	@DelegateAsync ApiService apiservice
+    def serviceMethod() {
+
+    }
+}
